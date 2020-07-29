@@ -20,8 +20,17 @@ class UNet(BaseModel):
         self.train_length = 0
         self.steps_per_epoch = 0
 
+        self.image_size = self.config.data.image_size
+        self.train_dataset = []
+        self.test_dataset = []
+
+    def load_data(self):
+        """Loads and Preprocess data"""
+        self.dataset, self.info = DataLoader().load_data(self.config.data)
+
     def _preprocess_data(self):
-        ...
+        """ Splits into training and test and set training parameters"""
+        train = self.dataset['train'].map(self._load_image_train, num_parallel_calls= tf.data.experimental.AUTOTUNE)
 
     def _set_training_parameters(self):
         ...
@@ -54,7 +63,7 @@ class UNet(BaseModel):
                            metrics=self.config.train.metrics)
 
         model_history = self.model.fit()
-        ...
+
 
     def evaluate(self):
         ...
