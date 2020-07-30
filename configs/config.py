@@ -5,7 +5,7 @@ CFG = {
     "data": {
         "path": "oxford_iiit_pet:3.*.*",
         "image_size": 128,
-        "load_with_info": True
+        "with_info": True
     },
     "train": {
         "batch_size": 64,
