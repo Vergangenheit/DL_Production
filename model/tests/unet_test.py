@@ -1,9 +1,13 @@
-import unittest
+from unittest.mock import patch
 from model.unet import UNet
 from configs.config import CFG
 import numpy as np
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
+def dummy_load_data(*args, **kwargs):
+    with tfds.testing.mock_data(num_examples=1):
+        return tfds.load(CFG['data']['path'], with_info=True)
 
 class UNetTest(tf.test.TestCase):
     def setUp(self):
@@ -20,6 +24,13 @@ class UNetTest(tf.test.TestCase):
 
         result = self.unet._normalize(input_image, input_mask)
         self.assertAllClose(expected_image, result[0])
+
+    @patch('model.unet.DataLoader.load_data')
+    def test_load_data(self, mock_data_loader):
+        pass
+
+
+
 
 
 if __name__ == "__main__":

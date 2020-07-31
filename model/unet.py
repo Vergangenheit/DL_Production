@@ -32,6 +32,11 @@ class UNet(BaseModel):
     def _preprocess_data(self):
         """ Splits into training and test and set training parameters"""
         train = self.dataset['train'].map(self._load_image_train, num_parallel_calls= tf.data.experimental.AUTOTUNE)
+        test = self.dataset['test'].map(self._load_image_test)
+
+        self.train_dataset = train.cache().shuffle(self.buffer_size).batch(self.batch_size).repeat()
+        self.train_dataset = self.train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        self.test_dataset = test.batch(self.batch_size)
 
     def _set_training_parameters(self):
         """Sets training parameters"""
@@ -55,8 +60,8 @@ class UNet(BaseModel):
     @tf.function
     def _load_image_train(self, datapoint):
         """ Loads and preprocess  a single training image """
-        input_image = tf.image.resize(datapoint['image'], (128, 128))
-        input_mask = tf.image.resize(datapoint['segmentation_mask'], (128, 128))
+        input_image = tf.image.resize(datapoint['image'], (self.image_size, self.image_size))
+        input_mask = tf.image.resize(datapoint['segmentation_mask'], (self.image_size, self.image_size))
 
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.flip_left_right(input_image)
@@ -68,8 +73,8 @@ class UNet(BaseModel):
 
     def _load_image_test(self, datapoint):
         """ Loads and preprocess a single test images"""
-        input_image = tf.image.resize(datapoint['image'], (128, 128))
-        input_mask = tf.image.resize(datapoint['segmentation_mask'], (128, 128))
+        input_image = tf.image.resize(datapoint['image'], (self.image_size, self.image_size))
+        input_mask = tf.image.resize(datapoint['segmentation_mask'], (self.image_size, self.image_size))
 
         input_image, input_mask = self._normalize(input_image, input_mask)
 
