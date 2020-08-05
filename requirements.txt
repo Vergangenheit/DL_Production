@@ -1,0 +1,4 @@
+tensorflow==2.3.0
+tfds-nightly==3.2.1
+git+https://github.com/tensorflow/examples.git
+protobuf==3.9.2
