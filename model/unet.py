@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow_examples.models.pix2pix import pix2pix
 from .base_model import BaseModel
 import tensorflow_datasets as tfds
 from dataloader.dataloader import DataLoader
@@ -31,7 +32,7 @@ class UNet(BaseModel):
 
     def _preprocess_data(self):
         """ Splits into training and test and set training parameters"""
-        train = self.dataset['train'].map(self._load_image_train, num_parallel_calls= tf.data.experimental.AUTOTUNE)
+        train = self.dataset['train'].map(self._load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         test = self.dataset['test'].map(self._load_image_test)
 
         self.train_dataset = train.cache().shuffle(self.buffer_size).batch(self.batch_size).repeat()
@@ -91,15 +92,56 @@ class UNet(BaseModel):
         ]
         layers = [self.base_model.get_layer(name).output for name in layer_names]
 
-        self.model = tf.keras.Model(inputs=self.base_model.input, outputs=layers)
+        down_stack = tf.keras.Model(inputs=self.base_model.input, outputs=layers)
+
+        down_stack.trainable = False
+
+        up_stack = [
+            pix2pix.upsample(self.config.model.up_stack.layer_1, self.config.model.up_stack.kernels),  # 4x4 -> 8x8
+            pix2pix.upsample(self.config.model.up_stack.layer_2, self.config.model.up_stack.kernels),  # 8x8 -> 16x16
+            pix2pix.upsample(self.config.model.up_stack.layer_3, self.config.model.up_stack.kernels),  # 16x16 -> 32x32
+            pix2pix.upsample(self.config.model.up_stack.layer_4, self.config.model.up_stack.kernels),  # 32x32 -> 64x64
+        ]
+
+        inputs = tf.keras.layers.Input(shape=self.config.model.input)
+        x = inputs
+
+        # Downsampling through the model
+        skips = down_stack(x)
+        x = skips[-1]
+        skips = reversed(skips[:-1])
+
+        # Upsampling and establishing the skip connections
+        for up, skip in zip(up_stack, skips):
+            x = up(x)
+            concat = tf.keras.layers.Concatenate()
+            x = concat([x, skip])
+
+        # This is the last layer of the model
+        last = tf.keras.layers.Conv2DTranspose(
+            self.output_channels, self.config.model.up_stack.kernels, strides=2,
+            padding='same')  # 64x64 -> 128x128
+
+        x = last(x)
+
+        self.model = tf.keras.Model(inputs=inputs, outputs=x)
 
     def train(self):
         self.model.compile(optimizer=self.config.train.optimizer.type,
                            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                            metrics=self.config.train.metrics)
 
-        model_history = self.model.fit()
+        model_history = self.model.fit(self.train_dataset, epochs=self.epoches,
+                                       steps_per_epoch=self.steps_per_epoch,
+                                       validation_steps=self.validation_steps,
+                                       validation_data=self.test_dataset)
 
+        return model_history.history['loss'], model_history.history['val_loss']
 
     def evaluate(self):
-        ...
+        """Predicts resuts for the test dataset"""
+        predictions = []
+        for image, mask in self.dataset.take(1):
+            predictions.append(self.model.predict(image))
+
+        return predictions

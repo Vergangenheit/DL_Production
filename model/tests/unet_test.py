@@ -5,16 +5,19 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+
 def dummy_load_data(*args, **kwargs):
     with tfds.testing.mock_data(num_examples=1):
         return tfds.load(CFG['data']['path'], with_info=True)
 
+
 class UNetTest(tf.test.TestCase):
     def setUp(self):
         super(UNetTest, self).setUp()
+        self.unet = UNet(CFG)
 
     def tearDown(self):
-        super(UNetTest, self).tearDown()
+        pass
 
     def normalize_test(self):
         """test normalize function"""
@@ -25,12 +28,22 @@ class UNetTest(tf.test.TestCase):
         result = self.unet._normalize(input_image, input_mask)
         self.assertAllClose(expected_image, result[0])
 
+    def test_ouput_size(self):
+        shape = (1, self.unet.image_size, self.unet.image_size, 3)
+        image = tf.ones(shape)
+        self.unet.build()
+        self.assertEqual(self.unet.model.predict(image).shape, shape)
+
     @patch('model.unet.DataLoader.load_data')
     def test_load_data(self, mock_data_loader):
-        pass
+        mock_data_loader.side_effect = dummy_load_data
+        shape = tf.TensorShape([None, self.unet.image_size, self.unet.image_size, 3])
 
+        self.unet.load_data()
+        mock_data_loader.assert_called()
 
-
+        self.assertItemsEqual(self.unet.train_dataset.element_spec[0].shape, shape)
+        self.assertItemsEqual(self.unet.test_dataset.element_spec[0].shape, shape)
 
 
 if __name__ == "__main__":

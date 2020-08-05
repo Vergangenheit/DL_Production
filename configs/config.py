@@ -3,7 +3,7 @@
 
 CFG = {
     "data": {
-        "path": "oxford_iiit_pet:3.*.*",
+        "path": "oxford_iiit_pet",
         "image_size": 128,
         "with_info": True
     },
