@@ -1,8 +1,9 @@
 from unittest.mock import patch
 from model.unet import UNet
 from configs.config import CFG
-import numpy as np
+
 import tensorflow as tf
+import numpy as np
 import tensorflow_datasets as tfds
 
 
@@ -11,16 +12,16 @@ def dummy_load_data(*args, **kwargs):
         return tfds.load(CFG['data']['path'], with_info=True)
 
 
-class UNetTest(tf.test.TestCase):
+class UnetTest(tf.test.TestCase):
+
     def setUp(self):
-        super(UNetTest, self).setUp()
+        super(UnetTest, self).setUp()
         self.unet = UNet(CFG)
 
     def tearDown(self):
         pass
 
-    def normalize_test(self):
-        """test normalize function"""
+    def test_normalize(self):
         input_image = np.array([[1., 1.], [1., 1.]])
         input_mask = 1
         expected_image = np.array([[0.00392157, 0.00392157], [0.00392157, 0.00392157]])
@@ -46,5 +47,5 @@ class UNetTest(tf.test.TestCase):
         self.assertItemsEqual(self.unet.test_dataset.element_spec[0].shape, shape)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     tf.test.main()
