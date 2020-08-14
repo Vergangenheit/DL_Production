@@ -3,6 +3,9 @@ from tensorflow_examples.models.pix2pix import pix2pix
 from .base_model import BaseModel
 import tensorflow_datasets as tfds
 from dataloader.dataloader import DataLoader
+from utils.logger import get_logger
+
+LOG = get_logger("unet")
 
 
 class UNet(BaseModel):
@@ -27,11 +30,13 @@ class UNet(BaseModel):
 
     def load_data(self):
         """Loads and Preprocess data"""
+        LOG.info(f'loading {self.config.data.path} dataset')
         self.dataset, self.info = DataLoader().load_data(self.config.data)
         self._preprocess_data()
 
     def _preprocess_data(self):
         """ Splits into training and test and set training parameters"""
+        LOG.info('splitting and shuffling the dataset...')
         train = self.dataset['train'].map(self._load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         test = self.dataset['test'].map(self._load_image_test)
 
@@ -126,10 +131,14 @@ class UNet(BaseModel):
 
         self.model = tf.keras.Model(inputs=inputs, outputs=x)
 
+        LOG.info('Keras model was build successfully')
+
     def train(self):
         self.model.compile(optimizer=self.config.train.optimizer.type,
                            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                            metrics=self.config.train.metrics)
+
+        LOG.info('Starting Training')
 
         model_history = self.model.fit(self.train_dataset, epochs=self.epoches,
                                        steps_per_epoch=self.steps_per_epoch,
@@ -141,7 +150,15 @@ class UNet(BaseModel):
     def evaluate(self):
         """Predicts resuts for the test dataset"""
         predictions = []
-        for image, mask in self.dataset.take(1):
+        LOG.info('Predicting segmentation map for test dataset')
+
+        for im in self.test_dataset.as_numpy_iterator():
+            DataLoader().validate_schema(im[0])
+            break
+
+        for image, mask in self.test_dataset:
+            tf.print(image)
+            # LOG.debug(f'Predicting segmentation map {image}')
             predictions.append(self.model.predict(image))
 
         return predictions

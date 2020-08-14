@@ -1,3 +1,4 @@
+PyYAML
 jsonschema
 tensorflow==2.0.0
 tfds-nightly==3.2.1.dev202008050105
