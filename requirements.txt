@@ -1,6 +1,6 @@
 PyYAML
 jsonschema
-tensorflow==2.0.1
+tensorflow==2.5.0
 tfds-nightly==3.2.1.dev202008050105
 git+https://github.com/tensorflow/examples.git
 protobuf==3.8.0
